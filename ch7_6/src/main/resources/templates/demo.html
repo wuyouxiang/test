@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+    <meta charset="UTF-8" />
+	<head>
+		<style type="text/css">
+			*{ list-style:none; margin:0; padding:0;}
+			html{ height:100%; overflow:hidden;}
+			body{height:100%;}
+			.top,.left,.right,.bottom{ background:#000; position:absolute;}
+			.top{ height:70px; left:10px; top:10px; right:10px;}
+			.left{ width:300px; left:10px; top:90px; bottom:90px;}
+			.right{ left:320px; right:10px; top:90px; bottom:90px;}
+			.bottom{height:70px; left:10px; right:10px; bottom:10px;}
+		</style>
+		<meta charset="utf-8" />
+		<title>test1</title>
+		<script th:src="@{sockjs.min.js}"></script>
+        <script th:src="@{stomp.min.js}"></script>
+        <script th:src="@{jquery.js}"></script>
+		<script th:inline="javascript">
+			$(document).ready(function(evt){
+			   var x,y,d_attr,svgid='svg',i='1';
+			   var getSvgId=function(){
+				   return svgid+i;
+			   };
+			   var getNextSvgId=function(){
+				   return svgid+i++;
+			   };
+			   var group=document.getElementById("group");
+			   var NS='http://www.w3.org/2000/svg';
+			   var use=function (fpol,d){
+				   fpol.setAttribute('points',d.points);
+				   fpol.setAttribute('id',d.id);
+				   fpol.setAttribute('opacity',d.opacity);
+				   fpol.setAttribute('stroke-linecap',d.strokelinecap);
+				   fpol.setAttribute('stroke-width',d.strokewidth);
+				   fpol.setAttribute('stroke',d.stroke);
+				   fpol.setAttribute('fill',d.fill);
+				   return fpol;
+			   };
+			   var sock = new SockJS("/endpointChat"); 
+			   var stomp = Stomp.over(sock);
+	            var connectCallback = function() {
+	                stomp.subscribe('/user/queue/notifications', function(message){
+	                     var pol3=document.createElementNS(NS,'polyline');
+	  				     pol3=use(pol3,{'points':message.body,'id':getNextSvgId(),'opacity':'0.5',
+	  								'strokelinecap':'round','strokewidth':'5','stroke':'black',
+	  								'fill':'none'});
+	  				     group.appendChild(pol3);
+	                     
+	                });
+	           };
+	           var errorCallback = function(error) {
+	        	      // display the error's message header:
+	        	      console.log("异常");
+	        	 };
+	          stomp.connect("guest", "guest", connectCallback, errorCallback);
+			   
+			   $('#stop').click(function() {sock.close();});
+			   
+			   $('svg').mousedown(function(evt1){
+				   var pol=document.createElementNS(NS,'polyline');
+				   x=evt1.clientX;y=evt1.clientY;
+				   d_attr=x+','+y+' ';
+				   pol=use(pol,{'points':d_attr,'id':getSvgId(),'opacity':'0.5',
+								'strokelinecap':'round','strokewidth':'5','stroke':'black',
+								'fill':'none'});
+				   group.appendChild(pol);
+
+				   
+				   $('svg').mousemove(function(evt2){
+					   var pol2=document.createElementNS(NS,'polyline');
+					   x=evt2.clientX;y=evt2.clientY;
+					   d_attr=d_attr+x+','+y+' ';
+					   pol2=use(pol,{'points':d_attr,'id':getSvgId(),'opacity':'0.5',
+								'strokelinecap':'round','strokewidth':'5','stroke':'black',
+								'fill':'none'});
+					   group.replaceChild(pol2,pol);
+					   pol=pol2;
+				   });
+
+				   });
+				   $('svg').mouseup(function(evt){
+					   $('svg').unbind("mousemove");
+					   stomp.send("/chat", {}, d_attr);
+					   console.log(getNextSvgId());
+				});
+			});
+		</script>
+	</head>
+	<body>
+		<svg width="100%" height="100%" preserveAspectRation="XMinYMid slice">
+			<g id="group">
+			</g>
+		</svg>
+	</body>
+</html>
